@@ -1,0 +1,24 @@
+# Build and VS files
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ASP.NET / dotnet
+appsettings.*.json
+secrets.json
+wwwroot/uploads
+
+# Node (if you add frontend)
+node_modules/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+Desktop.ini
+*.DS_Store
