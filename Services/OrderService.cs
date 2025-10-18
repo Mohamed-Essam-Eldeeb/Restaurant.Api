@@ -34,16 +34,36 @@ namespace Restaurant.Api.Services
 
         public async Task<Order> CreateAsync(Order order)
         {
-            order.Status = OrderStatus.Pending;
+            if (order.Items == null || !order.Items.Any())
+                throw new ArgumentException("Order must contain at least one item.");
 
-            order.TotalPrice = order.Items.Sum(i =>
-                _context.MenuItems.FirstOrDefault(m => m.Id == i.MenuItemId)?.Price * i.Quantity ?? 0
-            );
+            decimal totalPrice = 0;
+
+            foreach (var item in order.Items)
+            {
+                var menuItem = await _context.MenuItems.FindAsync(item.MenuItemId);
+                if (menuItem == null)
+                    throw new ArgumentException($"MenuItem with ID {item.MenuItemId} does not exist.");
+
+                if (!menuItem.IsAvailable)
+                    throw new ArgumentException($"MenuItem '{menuItem.Name}' is not available.");
+
+                if (item.Quantity <= 0)
+                    throw new ArgumentException($"Quantity for '{menuItem.Name}' must be greater than 0.");
+
+                totalPrice += menuItem.Price * item.Quantity;
+            }
+
+            order.TotalPrice = totalPrice;
+            order.Status = OrderStatus.Pending;
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
+
             return order;
         }
+
+
 
         public async Task<bool> UpdateAsync(int id, Order updatedOrder)
         {
