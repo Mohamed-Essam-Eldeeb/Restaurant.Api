@@ -25,36 +25,34 @@ namespace Restaurant.Api.Controllers
         public async Task<IActionResult> GetAll()
         {
             var orders = await _service.GetAllAsync();
-            return Ok(new { success = true, orders });
+            return Ok(new ApiResponse<IEnumerable<Order>>(orders));
         }
 
         // ----------------- GET BY ID -----------------
-        // Admin or the owner of the order
         [HttpGet("{id}")]
         [Authorize]
         public async Task<IActionResult> GetById(int id)
         {
             var order = await _service.GetByIdAsync(id);
             if (order == null)
-                return NotFound(new { success = false, message = "Order not found." });
+                return NotFound(new ApiResponse<string>("Order not found.", false));
 
+            // Admin or owner check
             var userRole = User.FindFirst("role")?.Value;
             var userId = int.Parse(User.FindFirst("id")?.Value ?? "0");
 
             if (userRole != "Admin" && order.UserId != userId)
                 return Forbid();
 
-            return Ok(new { success = true, order });
+            return Ok(new ApiResponse<Order>(order));
         }
 
         // ----------------- CREATE -----------------
-        // Customer only (any logged-in user)
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> Create([FromBody] OrderDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { success = false, message = "Invalid data.", errors = ModelState });
+            // Validation happens via FluentValidation automatically
 
             var userId = int.Parse(User.FindFirst("id")?.Value ?? "0");
 
@@ -63,7 +61,7 @@ namespace Restaurant.Api.Controllers
                 CustomerName = dto.CustomerName,
                 DeliveryAddress = dto.DeliveryAddress,
                 PhoneNumber = dto.PhoneNumber,
-                UserId = userId, // Always use the authenticated user ID
+                UserId = userId,
                 Items = dto.Items.Select(i => new OrderItem
                 {
                     MenuItemId = i.MenuItemId,
@@ -72,36 +70,56 @@ namespace Restaurant.Api.Controllers
             };
 
             var createdOrder = await _service.CreateAsync(order);
-            return CreatedAtAction(nameof(GetById), new { id = createdOrder.Id }, new { success = true, createdOrder });
+
+            return CreatedAtAction(nameof(GetById), new { id = createdOrder.Id },
+                new ApiResponse<Order>(createdOrder, "Order created successfully."));
         }
 
         // ----------------- UPDATE STATUS -----------------
-        // Admin only
         [HttpPut("{id}/status")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] string newStatus)
         {
             if (!Enum.TryParse<OrderStatus>(newStatus, true, out var parsedStatus))
-                return BadRequest(new { success = false, message = "Invalid status value." });
+                return BadRequest(new ApiResponse<string>("Invalid status value.", false));
 
             var updated = await _service.UpdateStatusAsync(id, parsedStatus);
             if (!updated)
-                return NotFound(new { success = false, message = "Order not found." });
+                return NotFound(new ApiResponse<string>("Order not found.", false));
 
-            return Ok(new { success = true, message = "Order status updated successfully." });
+            return Ok(new ApiResponse<string>("Order status updated successfully."));
         }
 
         // ----------------- DELETE -----------------
-        // Admin only
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var deleted = await _service.DeleteAsync(id);
             if (!deleted)
-                return NotFound(new { success = false, message = "Order not found." });
+                return NotFound(new ApiResponse<string>("Order not found.", false));
 
-            return Ok(new { success = true, message = "Order deleted successfully." });
+            return Ok(new ApiResponse<string>("Order deleted successfully."));
+        }
+    }
+
+    // ----------------- API Response Wrapper -----------------
+    public class ApiResponse<T>
+    {
+        public bool Success { get; set; } = true;
+        public string Message { get; set; }
+        public T Data { get; set; }
+
+        public ApiResponse(T data, string message = "")
+        {
+            Data = data;
+            Message = message;
+        }
+
+        public ApiResponse(string message, bool success)
+        {
+            Success = success;
+            Message = message;
         }
     }
 }

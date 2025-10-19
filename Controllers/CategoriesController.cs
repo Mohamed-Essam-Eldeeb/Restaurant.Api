@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Restaurant.Api.DTOs;
+using Restaurant.Api.Models;
 using Restaurant.Api.Services;
 
 namespace Restaurant.Api.Controllers
@@ -17,12 +18,19 @@ namespace Restaurant.Api.Controllers
         }
 
         // ----------------- GET ALL -----------------
-        // Public: anyone can view categories
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var categories = await _service.GetAllAsync();
-            return Ok(new { success = true, categories });
+
+            // Map entities to DTOs
+            var categoriesDto = categories.Select(c => new CategoryDTO
+            {
+                Id = c.Id,
+                Name = c.Name
+            });
+
+            return Ok(new ApiResponse<IEnumerable<CategoryDTO>>(categoriesDto, "List of all categories."));
         }
 
         // ----------------- GET BY ID -----------------
@@ -31,51 +39,62 @@ namespace Restaurant.Api.Controllers
         {
             var category = await _service.GetByIdAsync(id);
             if (category == null)
-                return NotFound(new { success = false, message = "Category not found." });
+                return NotFound(new ApiResponse<string>("Category not found.", false));
 
-            return Ok(new { success = true, category });
+            var categoryDto = new CategoryDTO
+            {
+                Id = category.Id,
+                Name = category.Name
+            };
+
+            return Ok(new ApiResponse<CategoryDTO>(categoryDto, "Category details."));
         }
 
         // ----------------- CREATE -----------------
-        // Admin only
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] CategoryDTO dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(new { success = false, message = "Invalid data.", errors = ModelState });
+                return BadRequest(new ApiResponse<string>("Invalid data.", false));
 
             var created = await _service.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, new { success = true, created });
+
+            var createdDto = new CategoryDTO
+            {
+                Id = created.Id,
+                Name = created.Name
+            };
+
+            return CreatedAtAction(nameof(GetById), new { id = createdDto.Id },
+                new ApiResponse<CategoryDTO>(createdDto, "Category created successfully."));
         }
 
         // ----------------- UPDATE -----------------
-        // Admin only
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(int id, [FromBody] CategoryDTO dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(new { success = false, message = "Invalid data.", errors = ModelState });
+                return BadRequest(new ApiResponse<string>("Invalid data.", false));
 
             var updated = await _service.UpdateAsync(id, dto);
             if (!updated)
-                return NotFound(new { success = false, message = "Category not found." });
+                return NotFound(new ApiResponse<string>("Category not found.", false));
 
-            return Ok(new { success = true, message = "Category updated successfully." });
+            return Ok(new ApiResponse<string>("Category updated successfully."));
         }
 
         // ----------------- DELETE -----------------
-        // Admin only
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var deleted = await _service.DeleteAsync(id);
             if (!deleted)
-                return NotFound(new { success = false, message = "Category not found." });
+                return NotFound(new ApiResponse<string>("Category not found.", false));
 
-            return Ok(new { success = true, message = "Category deleted successfully." });
+            return Ok(new ApiResponse<string>("Category deleted successfully."));
         }
     }
 }

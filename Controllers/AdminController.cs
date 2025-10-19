@@ -3,14 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Restaurant.Api.Data;
 using Restaurant.Api.DTOs;
+using Restaurant.Api.Helpers;
 using Restaurant.Api.Models;
-using BCrypt.Net;
 
 namespace Restaurant.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin")] // All actions are admin-only
     public class AdminController : ControllerBase
     {
         private readonly RestaurantContext _context;
@@ -24,11 +24,9 @@ namespace Restaurant.Api.Controllers
         [HttpPost("create")]
         public async Task<IActionResult> CreateAdmin([FromBody] UserDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
+            // Email uniqueness check
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
-                return BadRequest(new { success = false, message = "Email already in use." });
+                return BadRequest(new ApiResponse<string>("Email already in use.", false));
 
             var adminUser = new User
             {
@@ -43,12 +41,8 @@ namespace Restaurant.Api.Controllers
             _context.Users.Add(adminUser);
             await _context.SaveChangesAsync();
 
-            return Ok(new
-            {
-                success = true,
-                message = "Admin account created successfully!",
-                id = adminUser.Id
-            });
+            // Return only ID to avoid exposing unnecessary data
+            return Ok(new ApiResponse<int>(adminUser.Id, "Admin account created successfully!"));
         }
 
         // ----------------- GET ALL ADMINS -----------------
@@ -57,18 +51,29 @@ namespace Restaurant.Api.Controllers
         {
             var admins = await _context.Users
                 .Where(u => u.Role == "Admin")
-                .Select(u => new
+                .Select(u => new AdminDTO
                 {
-                    u.Id,
-                    u.Name,
-                    u.Email,
-                    u.PhoneNumber,
-                    u.Address,
-                    u.CreatedAt
+                    Id = u.Id,
+                    Name = u.Name,
+                    Email = u.Email,
+                    PhoneNumber = u.PhoneNumber,
+                    Address = u.Address,
+                    CreatedAt = u.CreatedAt
                 })
                 .ToListAsync();
 
-            return Ok(new { success = true, admins });
+            return Ok(new ApiResponse<IEnumerable<AdminDTO>>(admins, "List of all admins."));
         }
+    }
+
+    // ----------------- Admin Output DTO -----------------
+    public class AdminDTO
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? Address { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

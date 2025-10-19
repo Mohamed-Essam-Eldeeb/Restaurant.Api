@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Restaurant.Api.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace Restaurant.Api.DTOs
 {
@@ -17,15 +18,26 @@ namespace Restaurant.Api.DTOs
 
         [Required(ErrorMessage = "Password is required.")]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
-        public string Password { get; set; } // raw password, will be hashed before saving
+        public string Password { get; set; } // Will be hashed before saving
 
-        // Role should not be set by the user during registration
-        public string Role { get; } = "Customer";
+        // Role is not set by the user; default is "Customer"
+        public string Role { get; private set; } = "Customer";
 
         [Phone(ErrorMessage = "Invalid phone number.")]
+        [MaxLength(20, ErrorMessage = "Phone number cannot exceed 20 characters.")]
         public string? PhoneNumber { get; set; }
 
         [MaxLength(255, ErrorMessage = "Address cannot exceed 255 characters.")]
         public string? Address { get; set; }
+        public UserDTO(User user)
+        {
+            Id = user.Id;
+            Name = user.Name;
+            Email = user.Email;
+            Role = user.Role; // map from entity
+            PhoneNumber = user.PhoneNumber;
+            Address = user.Address;
+        }
     }
+
 }

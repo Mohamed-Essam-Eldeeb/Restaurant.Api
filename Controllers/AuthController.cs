@@ -4,9 +4,7 @@ using Restaurant.Api.Data;
 using Restaurant.Api.DTOs;
 using Restaurant.Api.Helpers;
 using Restaurant.Api.Models;
-using BCrypt.Net; // BCrypt.Net-Next
-using System.ComponentModel.DataAnnotations; // <-- Add this
-
+using BCrypt.Net;
 
 namespace Restaurant.Api.Controllers
 {
@@ -27,9 +25,9 @@ namespace Restaurant.Api.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { success = false, message = "Invalid data.", errors = ModelState });
+            // FluentValidation handles ModelState validation globally
 
+            // Check for duplicate email
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
                 return BadRequest(new { success = false, message = "Email already in use." });
 
@@ -53,10 +51,8 @@ namespace Restaurant.Api.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { success = false, message = "Invalid data.", errors = ModelState });
-
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
                 return Unauthorized(new { success = false, message = "Invalid email or password." });
 
@@ -76,15 +72,5 @@ namespace Restaurant.Api.Controllers
                 }
             });
         }
-    }
-
-    // ----------------- LOGIN DTO -----------------
-    public class LoginDTO
-    {
-        [Required, EmailAddress]
-        public string Email { get; set; }
-
-        [Required, MinLength(6)]
-        public string Password { get; set; }
     }
 }
