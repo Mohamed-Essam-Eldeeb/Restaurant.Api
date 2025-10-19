@@ -23,7 +23,7 @@ namespace Restaurant.Api.Controllers
 
         // ----------------- REGISTER -----------------
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] UserDTO dto)
+        public async Task<IActionResult> Register([FromBody] CreateUserDTO dto)
         {
             // FluentValidation handles ModelState validation globally
 

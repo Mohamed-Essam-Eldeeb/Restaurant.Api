@@ -8,9 +8,10 @@ namespace Restaurant.Api.API.Models
     {
         public int Id { get; set; }
 
-        public int? UserId { get; set; }
+        public int UserId { get; set; }
         public User? User { get; set; }
 
+        [InverseProperty("Order")]
         public List<OrderItem> Items { get; set; } = new();
 
         [Column(TypeName = "decimal(10,2)")]

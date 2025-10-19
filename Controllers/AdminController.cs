@@ -22,7 +22,7 @@ namespace Restaurant.Api.Controllers
 
         // ----------------- CREATE ADMIN -----------------
         [HttpPost("create")]
-        public async Task<IActionResult> CreateAdmin([FromBody] UserDTO dto)
+        public async Task<IActionResult> CreateAdmin([FromBody] CreateUserDTO dto)
         {
             // Email uniqueness check
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))

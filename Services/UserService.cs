@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// File: UserService.cs
+using Microsoft.EntityFrameworkCore;
 using Restaurant.Api.Data;
+using Restaurant.Api.DTOs;
 using Restaurant.Api.Models;
-using System.Security.Cryptography;
-using System.Text;
+using BCrypt.Net;
 
 namespace Restaurant.Api.Services
 {
@@ -15,60 +16,69 @@ namespace Restaurant.Api.Services
             _context = context;
         }
 
-        private string HashPassword(string password)
+        // Create a new user from CreateUserDTO
+        public async Task<User> CreateUserAsync(CreateUserDTO dto)
         {
-            using var sha256 = SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(password);
-            var hash = sha256.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
-        }
+            var user = new User
+            {
+                Name = dto.Name,
+                Email = dto.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                PhoneNumber = dto.PhoneNumber,
+                Address = dto.Address,
+                Role = "Customer" // default role
+            };
 
-        public async Task<IEnumerable<User>> GetAllAsync()
-        {
-            return await _context.Users.ToListAsync();
-        }
-
-        public async Task<User?> GetByIdAsync(int id)
-        {
-            return await _context.Users.FindAsync(id);
-        }
-
-        public async Task<User> CreateAsync(User user, string rawPassword)
-        {
-            user.PasswordHash = HashPassword(rawPassword);
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             return user;
         }
 
-        public async Task<bool> UpdateAsync(int id, User updatedUser, string? newPassword = null)
+        // Update an existing user
+        public async Task<User?> UpdateUserAsync(int id, CreateUserDTO dto)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user == null)
-                return false;
+            if (user == null) return null;
 
-            user.Name = updatedUser.Name;
-            user.Email = updatedUser.Email;
-            user.Role = updatedUser.Role;
-            user.PhoneNumber = updatedUser.PhoneNumber;
-            user.Address = updatedUser.Address;
+            user.Name = dto.Name;
+            user.Email = dto.Email;
+            user.PhoneNumber = dto.PhoneNumber;
+            user.Address = dto.Address;
 
-            if (!string.IsNullOrEmpty(newPassword))
-                user.PasswordHash = HashPassword(newPassword);
+            if (!string.IsNullOrEmpty(dto.Password))
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
             await _context.SaveChangesAsync();
-            return true;
+            return user;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        // Get all users
+        public async Task<List<User>> GetAllAsync()
+        {
+            return await _context.Users.ToListAsync();
+        }
+
+        // Get a user by id
+        public async Task<User?> GetByIdAsync(int id)
+        {
+            return await _context.Users.FindAsync(id);
+        }
+
+        // Delete a user by id
+        public async Task<bool> DeleteUserAsync(int id)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user == null)
-                return false;
+            if (user == null) return false;
 
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // Optional: verify password for login
+        public bool VerifyPassword(User user, string password)
+        {
+            return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
         }
     }
 }

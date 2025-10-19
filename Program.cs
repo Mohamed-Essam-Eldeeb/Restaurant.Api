@@ -7,11 +7,12 @@ using Restaurant.Api.Helpers;
 using Restaurant.Api.Services;
 using System.Text;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
-builder.Services.AddControllers();
+// Add services to the container and register FluentValidation
+builder.Services.AddControllers()
+    .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<Program>());
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -19,12 +20,14 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<RestaurantContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Add services
 builder.Services.AddScoped<MenuItemService>();
 builder.Services.AddScoped<CategoryService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddSingleton<JwtHelper>();
 
+// JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"];
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
@@ -50,11 +53,6 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-
-
-
-
-
 var app = builder.Build();
 
 // Configure middleware
@@ -63,14 +61,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
 app.UseMiddleware<Restaurant.Api.Middleware.ExceptionMiddleware>();
-
-
 app.UseHttpsRedirection();
 app.UseAuthentication();
-builder.Services.AddControllers()
-    .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<Program>());
-app.UseAuthorization();
-app.UseAuthorization();
+app.UseAuthorization(); // only once
+
 app.MapControllers();
 app.Run();

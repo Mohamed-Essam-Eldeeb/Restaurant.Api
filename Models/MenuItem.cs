@@ -14,13 +14,14 @@ namespace Restaurant.Api.Models
         public string? Description { get; set; }
 
         [Required]
-        [Range(0.01, 9999.99)]
+        [Column(TypeName = "decimal(10,2)")]
         public decimal Price { get; set; }
 
         public string? ImageUrl { get; set; }
 
         [ForeignKey("Category")]
         public int CategoryId { get; set; }
+        [Required]
         public Category? Category { get; set; }
 
         public bool IsAvailable { get; set; } = true;
